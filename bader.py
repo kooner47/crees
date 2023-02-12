@@ -43,8 +43,8 @@ def read_events(fileName):
 
 def main():
     time.sleep(2)
-    events = read_events("crees.txt")
-    execute_events(events, lambda: False)
+    events = read_events('mob.txt')
+    execute_events(events)
 
 
 if __name__ == '__main__':

@@ -1,83 +1,169 @@
 import win32gui
-from PIL import Image
 from mss import mss
 import cv2
+import pytesseract
 import numpy as np
-from pynput.keyboard import Key, Controller
 from time import sleep
+from bader import execute_events, read_events
+from text import extract_codes, extract_text
+from event import Event
 
-'''
-sleep(5)
+MAP_TOP_LEFT = (5, 28)
+MAP_BOTTOM_RIGHT = (184, 175)
 
-keyboard = Controller()
-
-# Press and release space
-keyboard.press(Key.space)
-keyboard.release(Key.space)
-'''
-'''
-bounding_box = {'top': 100, 'left': 0, 'width': 400, 'height': 300}
-
-sct = mss()
-
-while True:
-    sct_img = sct.grab(bounding_box)
-    cv2.imshow('screen', np.array(sct_img))
-
-    if (cv2.waitKey(1) & 0xFF) == ord('q'):
-        cv2.destroyAllWindows()
-        break
-'''
-
-name_img = cv2.imread('name.png')
-h, w = name_img.shape[:-1]
+EMPTY_INV_IMG = cv2.imread('data/empty_inv.png')
 
 
-def displayRect(box):
-    ss = mss()
-
-    loc = None
-    count = 0
-
-    while True:
-
-        ss_img = np.delete(np.array(ss.grab(box)), 3, axis=2)
-
-        if count % 2 == 0:
-            loc = findCharPos(ss_img)
-
-        for pt in zip(*loc[::-1]):
-            cv2.rectangle(ss_img, pt, (pt[0] + w, pt[1] + h), (0, 255, 0), 2)
-
-        cv2.imshow('screen', ss_img)
-
-        if (cv2.waitKey(1) & 0xFF) == ord('q'):
-            cv2.destroyAllWindows()
-            break
-
-        count += 1
-
-
-def getD2Window():
-    window = win32gui.FindWindow(None, "Haiku v213.3")
-    rect = win32gui.GetWindowRect(window)
-    return rect
-
-
-def findCharPos(ss):
-    res = cv2.matchTemplate(ss, name_img, cv2.TM_CCOEFF_NORMED)
-    loc = np.where(res >= 0.8)
+def findImagePos(window, img):
+    res = cv2.matchTemplate(window, img, cv2.TM_CCOEFF_NORMED)
+    loc = np.where(res >= 0.9)
     return loc
 
 
+def captureAndSaveWindow(d2Box, filename):
+    ss = mss()
+    ss_img = np.delete(np.array(ss.grab(d2Box)), 3, axis=2)
+    cv2.imwrite(filename, ss_img)
+
+
+def captureMap(d2Box):
+    ss = mss()
+    ss_img = np.array(ss.grab({'top': d2Box['top'] + MAP_TOP_LEFT[1], 'left': d2Box['left'] + MAP_TOP_LEFT[0],
+                               'width': MAP_BOTTOM_RIGHT[0] - MAP_TOP_LEFT[0], 'height': MAP_BOTTOM_RIGHT[1] - MAP_TOP_LEFT[1]}))
+    return np.delete(ss_img, 3, axis=2)
+
+
+def captureInv(d2Box):
+    ss = mss()
+    ss_img = np.array(ss.grab(
+        {'top': d2Box['top'] + 50, 'left': d2Box['left'] + 1330, 'width': 590, 'height': 420}))
+    return np.delete(ss_img, 3, axis=2)
+
+
+def captureMiddle(d2Box):
+    ss = mss()
+    ss_img = np.array(ss.grab(
+        {'top': d2Box['top'] + 300, 'left': d2Box['left'] + 600, 'width': 700, 'height': 400}))
+    return np.delete(ss_img, 3, axis=2)
+
+
+def isInvEmpty(d2Box):
+    inv_img = captureInv(d2Box)
+    loc = findImagePos(inv_img, EMPTY_INV_IMG)
+    return len(loc) > 0 and len(loc[0]) > 0
+
+
+def getD2Window():
+    try:
+        window = win32gui.FindWindow(None, "Haiku v213.3")
+        rect = win32gui.GetWindowRect(window)
+        return rect
+    except:
+        print("Window not found. Exiting.")
+        exit()
+
+
+def isYellowPixel(pixel):
+    return pixel[2] > 200 and pixel[1] > 200 and pixel[0] < 50
+
+
+def isYellowXY(img, x, y):
+    return x > img.shape[0] or y > img.shape[1] or isYellowPixel(img[x][y])
+
+
+def isYellow9Pixels(img, x, y):
+    for i in range(x, x+3):
+        for j in range(y, y+3):
+            if not isYellowXY(img, i, j):
+                return False
+    return True
+
+
+def writeCode(code_events, code):
+    sum_time = 3.15
+    for char in code:
+        if char.isupper():
+            sum_time += 0.3
+            code_events += [Event('press', 'DIK_SHIFT', sum_time)]
+
+        sum_time += 0.3
+        code_events += [Event('press', 'DIK_%s' % (char.upper()), sum_time)]
+        sum_time += 0.3
+        code_events += [Event('release', 'DIK_%s' % (char.upper()), sum_time)]
+
+        if char.isupper():
+            sum_time += 0.3
+            code_events += [Event('release', 'DIK_SHIFT', sum_time)]
+
+    sum_time += 0.3
+    code_events += [Event('press', 'DIK_ENTER', sum_time)]
+    sum_time += 0.3
+    code_events += [Event('release', 'DIK_ENTER', sum_time)]
+    execute_events(code_events)
+
+
+'''
+blah blah
+dd
+
+'''
+
+
 def main():
-    rect = getD2Window()
-    bounding_box = {'top': rect[1], 'left': rect[0],
-                    'width': rect[2] - rect[0], 'height': rect[3] - rect[1]}
+    buff_events = read_events('data/buff.txt')
+    mob_events = read_events('data/mob.txt')
+    sell_events = read_events('data/sell.txt')
+    code_events = read_events('data/code.txt')
 
-    ss = np.delete(np.array(mss().grab(bounding_box)), 3, axis=2)
+    print('Waiting for 2 seconds.')
+    sleep(2)
+    print('Starting.')
 
-    displayRect(bounding_box)
+    for _i in range(4):
+        print('Outer iteration %d.' % (_i))
+        rect = getD2Window()
+        box = {'top': rect[1], 'left': rect[0],
+               'width': rect[2] - rect[0], 'height': rect[3] - rect[1]}
+
+        print('Executing buffs.')
+        execute_events(buff_events)
+        for _j in range(6):
+            print('Inner iteration %d.' % (_j))
+            print('Executing mobbing.')
+            # TODO: add click on screen here
+            execute_events(mob_events)
+            notice_img = captureMiddle(box)
+            text = extract_text(notice_img)
+            if '@bot' in text:
+                print('Found text bubble.')
+                codes = extract_codes(text)
+                for code in codes:
+                    print('Executing code "%s".' % (code))
+                    writeCode(code_events, code)
+
+                    notice_img = captureMiddle(box)
+                    text = extract_text(notice_img)
+                    if '@bot' not in text:
+                        print('Text bubble no longer found. Continuing.')
+                        break
+
+                # TODO: dismiss notice by clicking on notice
+                # then pressing enter or esc?
+                notice_img = captureMiddle(box)
+                text = extract_text(notice_img)
+                if '@bot' in text:
+                    print('Text bubble still visible. Exiting.')
+                    captureAndSaveWindow(box, 'error_text_bubble.png')
+                    exit()
+
+            if not isInvEmpty(box):
+                print('Inventory not empty. Executing sell command.')
+                execute_events(sell_events)
+            if not isInvEmpty(box):
+                print('Inventory still not empty. Exiting.')
+                captureAndSaveWindow(box, 'error_inventory.png')
+                exit()
 
 
-main()
+if __name__ == '__main__':
+    main()
