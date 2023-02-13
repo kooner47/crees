@@ -130,39 +130,45 @@ def main():
         for _j in range(6):
             print('Inner iteration %d.' % (_j))
             print('Executing mobbing.')
-            # TODO: add click on screen here
+            # TODO: add click on screen here, increase movement within mob.txt to test whether empty attacking still occurs
             execute_events(mob_events)
             notice_img = captureMiddle(box)
             text = extract_text(notice_img)
             if '@bot' in text:
                 print('Found text bubble.')
+                # TODO: press enter once here to dismiss notice
+                execute_events
                 codes = extract_codes(text)
                 for code in codes:
                     print('Executing code "%s".' % (code))
                     writeCode(code_events, code)
 
+                    # TODO: find another way to determine test is passed and stop attempting more codes
+                    '''
                     notice_img = captureMiddle(box)
                     text = extract_text(notice_img)
                     if '@bot' not in text:
                         print('Text bubble no longer found. Continuing.')
                         break
+                    '''
 
-                # TODO: dismiss notice by clicking on notice
-                # then pressing enter or esc?
+                # TODO: verify notice is dismissed by initial enter press, find other way to determine test is passed
+                '''
                 notice_img = captureMiddle(box)
                 text = extract_text(notice_img)
                 if '@bot' in text:
                     print('Text bubble still visible. Exiting.')
                     captureAndSaveWindow(box, 'error_text_bubble.png')
                     exit()
+                '''
 
             if not isInvEmpty(box):
                 print('Inventory not empty. Executing sell command.')
                 execute_events(sell_events)
-            if not isInvEmpty(box):
-                print('Inventory still not empty. Exiting.')
-                captureAndSaveWindow(box, 'error_inventory.png')
-                exit()
+                if not isInvEmpty(box):
+                    print('Inventory still not empty. Exiting.')
+                    captureAndSaveWindow(box, 'error_inventory.png')
+                    exit()
 
 
 if __name__ == '__main__':
