@@ -120,7 +120,6 @@ dd
 
 
 def main():
-
     buff_events = read_events('data/buff.txt')
     mob_events = read_events('data/mob.txt')
     sell_events = read_events('data/sell.txt')

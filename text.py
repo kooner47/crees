@@ -8,6 +8,15 @@ def extract_text(img):
 
     # Preprocessing the image starts
 
+    # Convert the red text to blue
+    for x in range(img.shape[0]):
+        for y in range(img.shape[1]):
+            pixel = img[x][y]
+            if pixel[0] < 20 and pixel[1] < 20 and pixel[2] > 240:
+                img[x][y][0] = 255
+                img[x][y][1] = 0
+                img[x][y][2] = 0
+
     # Convert the image to gray scale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -20,7 +29,7 @@ def extract_text(img):
     # of the rectangle to be detected.
     # A smaller value like (10, 10) will detect
     # each word instead of a sentence.
-    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 20))
+    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
 
     # Applying dilation on the threshold image
     dilation = cv2.dilate(thresh1, rect_kernel, iterations=1)
@@ -57,7 +66,11 @@ def extract_text(img):
 
 
 def extract_codes(text):
-    code = text.split('@bot')[1].strip()
+    try:
+        code = text.split('@bot')[1].strip()
+    except:
+        print('Expected text not found. Returning empty codes.')
+        return []
 
     os = ['o', 'O', '0']
 
@@ -79,3 +92,16 @@ def extract_codes(text):
         ret = ret2
 
     return ret
+
+
+def main():
+    img = cv2.imread('data/test.png')
+    text = extract_text(img)
+    print(text)
+    codes = extract_codes(text)
+    print(codes)
+    exit()
+
+
+if __name__ == '__main__':
+    main()
