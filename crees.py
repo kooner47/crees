@@ -1,4 +1,6 @@
 import win32gui
+import win32api
+import win32con
 from mss import mss
 import cv2
 import pytesseract
@@ -12,6 +14,14 @@ MAP_TOP_LEFT = (5, 28)
 MAP_BOTTOM_RIGHT = (184, 175)
 
 EMPTY_INV_IMG = cv2.imread('data/empty_inv.png')
+
+
+def click(d2Box, x, y):
+    win32api.SetCursorPos((x, y))
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,
+                         d2Box['left'] + x, d2Box['top'] + y, 0, 0)
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,
+                         d2Box['left'] + x, d2Box['top'] + y, 0, 0)
 
 
 def findImagePos(window, img):
@@ -110,6 +120,7 @@ dd
 
 
 def main():
+
     buff_events = read_events('data/buff.txt')
     mob_events = read_events('data/mob.txt')
     sell_events = read_events('data/sell.txt')
@@ -136,9 +147,10 @@ def main():
             text = extract_text(notice_img)
             if '@bot' in text:
                 print('Found text bubble.')
-                # TODO: press enter once here to dismiss notice
-                execute_events
                 codes = extract_codes(text)
+                click(box, 960, 720)
+                execute_events([Event('press', 'DIK_ENTER', 0.5),
+                                Event('release', 'DIK_ENTER', 0.5)])
                 for code in codes:
                     print('Executing code "%s".' % (code))
                     writeCode(code_events, code)
