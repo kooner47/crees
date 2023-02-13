@@ -139,9 +139,6 @@ def main():
         execute_events(buff_events)
         for _j in range(6):
             print('Inner iteration %d.' % (_j))
-            print('Executing mobbing.')
-            # TODO: add click on screen here, increase movement within mob.txt to test whether empty attacking still occurs
-            execute_events(mob_events)
             notice_img = captureMiddle(box)
             text = extract_text(notice_img)
             if '@bot' in text:
@@ -180,6 +177,11 @@ def main():
                     print('Inventory still not empty. Exiting.')
                     captureAndSaveWindow(box, 'error_inventory.png')
                     exit()
+
+            # TODO: reduce mob time to 15 seconds and repeat a second time
+            print('Executing mobbing.')
+            # TODO: add click on screen here, increase movement within mob.txt to test whether empty attacking still occurs
+            execute_events(mob_events)
 
 
 if __name__ == '__main__':
