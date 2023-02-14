@@ -1,3 +1,4 @@
+from playsound import playsound
 import win32gui
 import win32api
 import win32con
@@ -137,12 +138,13 @@ def main():
 
         print('Executing buffs.')
         execute_events(buff_events)
-        for _j in range(6):
+        for _j in range(12):
             print('Inner iteration %d.' % (_j))
             notice_img = captureMiddle(box)
             text = extract_text(notice_img)
             if '@bot' in text:
                 print('Found text bubble.')
+                playsound('data/sound.wav')
                 codes = extract_codes(text)
                 click(box, 960, 720)
                 execute_events([Event('press', 'DIK_ENTER', 0.5),
