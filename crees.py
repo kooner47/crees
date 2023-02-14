@@ -110,6 +110,10 @@ def writeCode(code_events, code):
     code_events += [Event('press', 'DIK_ENTER', sum_time)]
     sum_time += 0.3
     code_events += [Event('release', 'DIK_ENTER', sum_time)]
+    sum_time += 0.3
+    code_events += [Event('press', 'DIK_ENTER', sum_time)]
+    sum_time += 0.3
+    code_events += [Event('release', 'DIK_ENTER', sum_time)]
     execute_events(code_events)
 
 
