@@ -8,15 +8,6 @@ def extract_text(img):
 
     # Preprocessing the image starts
 
-    # Convert the red text to blue
-    for x in range(img.shape[0]):
-        for y in range(img.shape[1]):
-            pixel = img[x][y]
-            if pixel[0] < 20 and pixel[1] < 20 and pixel[2] > 240:
-                img[x][y][0] = 255
-                img[x][y][1] = 0
-                img[x][y][2] = 0
-
     # Convert the image to gray scale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -39,7 +30,7 @@ def extract_text(img):
                                            cv2.CHAIN_APPROX_NONE)
 
     # Creating a copy of image
-    im2 = img.copy()
+    im2 = gray.copy()
 
     output_text = ''
 
@@ -67,7 +58,7 @@ def extract_text(img):
 
 def extract_codes(text):
     try:
-        code = text.split('@bot')[1].strip()
+        code = text.split('@bot')[1].split('\n')[0].strip()
     except:
         print('Expected text not found. Returning empty codes.')
         return []
@@ -95,7 +86,7 @@ def extract_codes(text):
 
 
 def main():
-    img = cv2.imread('data/test.png')
+    img = cv2.imread('data/test2.png')
     text = extract_text(img)
     print(text)
     codes = extract_codes(text)

@@ -15,6 +15,7 @@ MAP_TOP_LEFT = (5, 28)
 MAP_BOTTOM_RIGHT = (184, 175)
 
 EMPTY_INV_IMG = cv2.imread('data/empty_inv.png')
+NOTICE_IMG = cv2.imread('data/notice.png')
 
 
 def click(d2Box, x, y):
@@ -58,10 +59,31 @@ def captureMiddle(d2Box):
     return np.delete(ss_img, 3, axis=2)
 
 
+def captureBubble(d2Box):
+    ss = mss()
+    ss_img = np.array(ss.grab(
+        {'top': d2Box['top'] + 850, 'left': d2Box['left'] + 1320, 'width': 300, 'height': 180}))
+    return np.delete(ss_img, 3, axis=2)
+
+
 def isInvEmpty(d2Box):
     inv_img = captureInv(d2Box)
     loc = findImagePos(inv_img, EMPTY_INV_IMG)
     return len(loc) > 0 and len(loc[0]) > 0
+
+
+def isNoticePresent(d2Box):
+    inv_img = captureMiddle(d2Box)
+    loc = findImagePos(inv_img, NOTICE_IMG)
+    return len(loc) > 0 and len(loc[0]) > 0
+
+
+def getBubbleCodes(d2Box):
+    bubble_img = captureBubble(d2Box)
+    text = extract_text(bubble_img)
+    # '@bot' should be found in text...
+    codes = extract_codes(text)
+    return codes
 
 
 def getD2Window():
@@ -144,12 +166,12 @@ def main():
         execute_events(buff_events)
         for _j in range(12):
             print('Inner iteration %d.' % (_j))
-            notice_img = captureMiddle(box)
-            text = extract_text(notice_img)
-            if '@bot' in text:
+            isPresent = isNoticePresent(box)
+            if isPresent:
                 print('Found text bubble.')
                 playsound('data/sound.wav')
-                codes = extract_codes(text)
+
+                codes = getBubbleCodes(box)
                 click(box, 960, 720)
                 execute_events([Event('press', 'DIK_ENTER', 0.5),
                                 Event('release', 'DIK_ENTER', 0.5)])
@@ -184,7 +206,6 @@ def main():
                     captureAndSaveWindow(box, 'error_inventory.png')
                     exit()
 
-            # TODO: reduce mob time to 15 seconds and repeat a second time
             print('Executing mobbing.')
             # TODO: add click on screen here, increase movement within mob.txt to test whether empty attacking still occurs
             execute_events(mob_events)
