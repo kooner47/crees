@@ -10,9 +10,13 @@ from time import sleep
 from bader import execute_events, read_events
 from text import extract_codes, extract_text
 from event import Event
+import tkinter as tk
 
 MAP_TOP_LEFT = (5, 28)
-MAP_BOTTOM_RIGHT = (184, 175)
+MAP_BOTTOM_RIGHT = (184, 190)
+
+PLATFORM_X_RANGE = (95, 101)
+PLATFORM_Y_RANGE = (123, 125)
 
 EMPTY_INV_IMG = cv2.imread('data/empty_inv.png')
 NOTICE_IMG = cv2.imread('data/notice.png')
@@ -36,6 +40,9 @@ def captureAndSaveWindow(d2Box, filename):
     ss = mss()
     ss_img = np.delete(np.array(ss.grab(d2Box)), 3, axis=2)
     cv2.imwrite(filename, ss_img)
+
+    home_events = read_events('data/home.txt')
+    execute_events(home_events)
 
 
 def captureMap(d2Box):
@@ -90,26 +97,182 @@ def getD2Window():
     try:
         window = win32gui.FindWindow(None, "Haiku v213.3")
         rect = win32gui.GetWindowRect(window)
-        return rect
+        box = {'top': rect[1], 'left': rect[0],
+               'width': rect[2] - rect[0], 'height': rect[3] - rect[1]}
+        return box
     except:
         print("Window not found. Exiting.")
         exit()
 
 
 def isYellowPixel(pixel):
-    return pixel[2] > 200 and pixel[1] > 200 and pixel[0] < 50
+    return pixel[2] > 200 and pixel[1] > 200 and pixel[0] < 100
+
+
+def isPinkPixel(pixel):
+    return pixel[2] > 200 and pixel[1] < 120 and pixel[0] > 230
 
 
 def isYellowXY(img, x, y):
-    return x > img.shape[0] or y > img.shape[1] or isYellowPixel(img[x][y])
+    return x >= img.shape[0] or y >= img.shape[1] or isYellowPixel(img[x][y])
+
+
+def isPinkXY(img, x, y):
+    return x >= img.shape[0] or y >= img.shape[1] or isPinkPixel(img[x][y])
 
 
 def isYellow9Pixels(img, x, y):
+    count = 0
     for i in range(x, x+3):
         for j in range(y, y+3):
-            if not isYellowXY(img, i, j):
-                return False
-    return True
+            if isYellowXY(img, i, j):
+                count += 1
+    return count >= 9
+
+
+def isPink9Pixels(img, x, y):
+    count = 0
+    for i in range(x, x+3):
+        for j in range(y, y+3):
+            if isPinkXY(img, i, j):
+                count += 1
+    return count >= 9
+
+
+def getYellowPos(d2Box):
+    map_img = captureMap(d2Box)
+    for x in range(map_img.shape[0]):
+        for y in range(map_img.shape[1]):
+            if isYellow9Pixels(map_img, x, y):
+                return (y, x)
+
+    print('Cannot find self on map. Exiting')
+    captureAndSaveWindow(d2Box, 'error_map.png')
+    exit()
+
+
+def getPinkPos(d2Box):
+    map_img = captureMap(d2Box)
+    for x in range(map_img.shape[0]):
+        for y in range(map_img.shape[1]):
+            if isPink9Pixels(map_img, x, y):
+                return (y, x)
+
+    print('Pink not found. Returning none.')
+    return None
+
+
+def moveLeftForSeconds(time):
+    events = []
+    events += [Event('press', 'DIK_LEFT', 0)]
+    events += [Event('release', 'DIK_LEFT', time)]
+    execute_events(events)
+
+
+def moveRightForSeconds(time):
+    events = []
+    events += [Event('press', 'DIK_RIGHT', 0)]
+    events += [Event('release', 'DIK_RIGHT', time)]
+    execute_events(events)
+
+
+def jumpUpLow():
+    events = []
+    events += [Event('press', 'DIK_ALTL', 0)]
+    events += [Event('release', 'DIK_ALTL', 0.1)]
+    events += [Event('press', 'DIK_Z', 0.45)]
+    events += [Event('release', 'DIK_Z', 1)]
+    execute_events(events)
+
+
+def jumpUpHigh():
+    events = []
+    events += [Event('press', 'DIK_ALTL', 0)]
+    events += [Event('release', 'DIK_ALTL', 0.1)]
+    events += [Event('press', 'DIK_Z', 0.25)]
+    events += [Event('release', 'DIK_Z', 1)]
+    execute_events(events)
+
+
+def jumpDown():
+    events = []
+    events += [Event('press', 'DIK_DOWN', 0)]
+    events += [Event('press', 'DIK_ALTL', 0.1)]
+    events += [Event('release', 'DIK_ALTL', 0.25)]
+    events += [Event('release', 'DIK_DOWN', 2)]
+    execute_events(events)
+
+
+def centerSelf(d2Box):
+    for _ in range(2):
+        yellowPos = getYellowPos(d2Box)
+        x, y = yellowPos
+        if x < PLATFORM_X_RANGE[0]:
+            moveRightForSeconds(0.06*(2+PLATFORM_X_RANGE[0] - x))
+            sleep(0.5)
+        elif x > PLATFORM_X_RANGE[1]:
+            moveLeftForSeconds(0.06*(2+x - PLATFORM_X_RANGE[1]))
+            sleep(0.5)
+        else:
+            break
+
+    yellowPos = getYellowPos(d2Box)
+    x, y = yellowPos
+    if x < PLATFORM_X_RANGE[0] or x > PLATFORM_X_RANGE[1]:
+        print('Could not center self on platform. Exiting.')
+        captureAndSaveWindow(d2Box, 'error_platform.png')
+        exit()
+
+    if y < PLATFORM_Y_RANGE[0]:
+        print('Ended up too high. Exiting.')
+        captureAndSaveWindow(d2Box, 'error_high.png')
+        exit()
+    elif y > PLATFORM_Y_RANGE[1]:
+        jumpUpLow()
+        sleep(0.5)
+        yellowPos = getYellowPos(d2Box)
+        x, y = yellowPos
+        if y < PLATFORM_Y_RANGE[0] or y > PLATFORM_Y_RANGE[1]:
+            print('Could not jump up. Exiting.')
+            captureAndSaveWindow(d2Box, 'error_jump.png')
+            exit()
+
+
+def moveToPink(d2Box):
+    pinkPos = getPinkPos(d2Box)
+    if not pinkPos:
+        return
+    for _ in range(2):
+        yellowPos = getYellowPos(d2Box)
+        x, y = yellowPos
+        if x < pinkPos[0] - 5:
+            moveRightForSeconds(0.06*(pinkPos[0] - x))
+        elif x > pinkPos[0] + 5:
+            moveLeftForSeconds(0.06*(x - pinkPos[0]))
+
+    yellowPos = getYellowPos(d2Box)
+    x, y = yellowPos
+    if abs(pinkPos[0] - x) > 5:
+        print('Could not match pink\'s x position. Exiting.')
+        captureAndSaveWindow(d2Box, 'error_pink_x.png')
+        exit()
+
+    for _ in range(3):
+        yellowPos = getYellowPos(d2Box)
+        x, y = yellowPos
+        if y < pinkPos[1]:
+            jumpDown()
+        elif y > pinkPos[1]:
+            jumpUpHigh()
+
+    yellowPos = getYellowPos(d2Box)
+    x, y = yellowPos
+    if abs(pinkPos[1] - y) > 5:
+        print('Could not match pink\'s y position. Exiting.')
+        captureAndSaveWindow(d2Box, 'error_pink_y.png')
+        exit()
+
+    exit()
 
 
 def writeCode(code_events, code):
@@ -139,6 +302,15 @@ def writeCode(code_events, code):
     execute_events(code_events)
 
 
+def flashScreen():
+    root = tk.Tk()
+    root.configure(bg='red')
+    root.overrideredirect(True)
+    root.state('zoomed')
+    root.after(2000, root.destroy)  # set the flash time to 5000 milliseconds
+    root.mainloop()
+
+
 '''
 blah blah
 dd
@@ -147,10 +319,16 @@ dd
 
 
 def main():
+    sleep(1)
+    box = getD2Window()
+    moveToPink(box)
+    exit()
+
     buff_events = read_events('data/buff.txt')
     mob_events = read_events('data/mob.txt')
     sell_events = read_events('data/sell.txt')
     code_events = read_events('data/code.txt')
+    home_events = read_events('data/home.txt')
 
     print('Waiting for 2 seconds.')
     sleep(2)
@@ -158,9 +336,7 @@ def main():
 
     for _i in range(4):
         print('Outer iteration %d.' % (_i))
-        rect = getD2Window()
-        box = {'top': rect[1], 'left': rect[0],
-               'width': rect[2] - rect[0], 'height': rect[3] - rect[1]}
+        box = getD2Window()
 
         print('Executing buffs.')
         execute_events(buff_events)
@@ -169,6 +345,7 @@ def main():
             isPresent = isNoticePresent(box)
             if isPresent:
                 print('Found text bubble.')
+                # flashScreen()
                 playsound('data/sound.wav')
 
                 codes = getBubbleCodes(box)

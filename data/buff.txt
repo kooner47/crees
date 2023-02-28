@@ -23,15 +23,3 @@ press,DIK_9,0.106715
 release,DIK_9,0.079787
 press,DIK_9,0.104719
 release,DIK_9,0.085771
-press,DIK_0,0.124667
-release,DIK_0,0.066821
-press,DIK_0,0.095744
-release,DIK_0,0.080784
-press,DIK_0,0.091755
-release,DIK_0,0.072805
-press,DIK_0,0.123669
-release,DIK_0,0.057846
-press,DIK_0,0.104720
-release,DIK_0,0.070321
-press,DIK_0,0.111208
-release,DIK_0,0.065824

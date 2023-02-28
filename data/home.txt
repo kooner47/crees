@@ -1,0 +1,17 @@
+release,DIK_ENTER,0.096248
+press,DIK_ENTER,0.818854
+release,DIK_ENTER,0.074800
+press,DIK_SHIFT,0.157086
+press,DIK_@,0.156090
+release,DIK_@,0.091264
+release,DIK_SHIFT,0.003989
+press,DIK_H,0.180025
+release,DIK_H,0.086768
+press,DIK_O,0.050864
+release,DIK_O,0.061343
+press,DIK_M,0.082778
+release,DIK_M,0.075798
+press,DIK_E,0.053856
+release,DIK_E,0.072313
+press,DIK_ENTER,0.128166
+release,DIK_ENTER,0.071806
