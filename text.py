@@ -1,5 +1,245 @@
 import cv2
 import pytesseract
+import numpy as np
+
+
+def add_rounded_freqs(freqs, img):
+    for row in range(img.shape[0]):
+        for col in range(img.shape[1]):
+            pixel = img[row][col]
+            rounded_pixel = (pixel[0] // 20 * 20,
+                             pixel[1] // 20 * 20, pixel[2] // 20 * 20)
+            if rounded_pixel not in freqs:
+                freqs[rounded_pixel] = 0
+            freqs[rounded_pixel] += 1
+
+
+def extract_arrows(img):
+    col_dim = img.shape[1] // 4-5
+    bg_color_freq = {}
+    above = img[:5, :, :]
+    below = img[-5:, :, :]
+    add_rounded_freqs(bg_color_freq, above)
+    add_rounded_freqs(bg_color_freq, below)
+    for quad in range(4):
+        arrow = img[5:-5, quad*col_dim+5:(quad+1)*col_dim-5, :]
+        before = img[5:-5, quad*col_dim:quad*col_dim+5, :]
+        after = img[5:-5, (quad+1)*col_dim-5:(quad+1)*col_dim, :]
+        add_rounded_freqs(bg_color_freq, before)
+        add_rounded_freqs(bg_color_freq, after)
+
+    arrows = []
+    for quad in range(4):
+        arrow = img[5:-5, quad*col_dim+5:(quad+1)*col_dim-5, :]
+        for row in range(arrow.shape[0]):
+            for col in range(arrow.shape[1]):
+                pixel = arrow[row][col]
+                rounded_pixel = (pixel[0] // 20 * 20,
+                                 pixel[1] // 20 * 20, pixel[2] // 20 * 20)
+                if rounded_pixel in bg_color_freq:
+                    arrow[row][col] = [0, 0, 0]
+                else:
+                    arrow[row][col] = [255, 255, 255]
+        arrows += [arrow]
+
+    return arrows
+
+
+def lotsOfNeighbors(img, x, y):
+    whiteCount = 0
+    for row in range(x-2, x+2):
+        for col in range(y-2, y+2):
+            if isWhiteXY(img, row, col):
+                whiteCount += 1
+
+    for row in range(x-2, x+2):
+        for col in range(y-2, y+2):
+            if isWhiteXY(img, row, col):
+                whiteCount += 1
+
+    return whiteCount >= 14
+
+
+def someNeighbors(img, x, y):
+    whiteCount = 0
+    for row in range(x-2, x+2):
+        for col in range(y-2, y+2):
+            if isWhiteXY(img, row, col):
+                whiteCount += 1
+
+    for row in range(x-2, x+2):
+        for col in range(y-2, y+2):
+            if isWhiteXY(img, row, col):
+                whiteCount += 1
+
+    return whiteCount >= 10
+
+
+def isWhiteXY(img, x, y):
+    if x < 0 or x >= img.shape[0] or y < 0 or y >= img.shape[1]:
+        return False
+    pixel = img[x][y]
+    return pixel[0] == 255 and pixel[1] == 255 and pixel[2] == 255
+
+
+def detect_arrow(img):
+    x_dim = img.shape[0] // 2
+    y_dim = img.shape[1] // 2
+
+    cutoffPointTop = None
+    numPopularsFound = 0
+    for x in range(x_dim*2):
+        for y in range(y_dim-2, y_dim+3):
+            if lotsOfNeighbors(img, x, y):
+                numPopularsFound += 1
+                if numPopularsFound >= 3:
+                    cutoffPointTop = x
+                    break
+        if cutoffPointTop is not None:
+            break
+    if cutoffPointTop is None:
+        numPopularsFound = 0
+        for x in range(x_dim*2):
+            for y in range(y_dim-6, y_dim+7):
+                if someNeighbors(img, x, y):
+                    numPopularsFound += 1
+                    if numPopularsFound >= 3:
+                        cutoffPointTop = x
+                        break
+            if cutoffPointTop is not None:
+                break
+        if cutoffPointTop is None:
+            print('Failed to detect cutoff point top. Exiting')
+            cv2.imwrite('error_cutoff_top.png', img)
+            exit()
+
+    cutoffPointBot = None
+    numPopularsFound = 0
+    for x in range(img.shape[0] - 1, img.shape[0] - 1 - 2*x_dim, -1):
+        for y in range(y_dim-2, y_dim+3):
+            if lotsOfNeighbors(img, x, y):
+                numPopularsFound += 1
+                if numPopularsFound >= 3:
+                    cutoffPointBot = x
+                    break
+        if cutoffPointBot is not None:
+            break
+    if cutoffPointBot == None:
+        numPopularsFound = 0
+        for x in range(img.shape[0] - 1, img.shape[0] - 1 - 2*x_dim, -1):
+            for y in range(y_dim-6, y_dim+7):
+                if someNeighbors(img, x, y):
+                    numPopularsFound += 1
+                    if numPopularsFound >= 3:
+                        cutoffPointBot = x
+                        break
+            if cutoffPointBot is not None:
+                break
+        if cutoffPointBot is None:
+            print('Failed to detect cutoff point bot. Exiting')
+            cv2.imwrite('error_cutoff_bot.png', img)
+            exit()
+
+    cutoffPointRight = None
+    numPopularsFound = 0
+    for y in range(img.shape[1] - 1, img.shape[1] - 1 - 2*y_dim, -1):
+        for x in range(x_dim-2, x_dim+3):
+            if lotsOfNeighbors(img, x, y):
+                numPopularsFound += 1
+                if numPopularsFound >= 3:
+                    cutoffPointRight = y
+                    break
+        if cutoffPointRight is not None:
+            break
+    if cutoffPointRight is None:
+        numPopularsFound = 0
+        for y in range(img.shape[1] - 1, img.shape[1] - 1 - 2*y_dim, -1):
+            for x in range(x_dim-6, x_dim+7):
+                if someNeighbors(img, x, y):
+                    numPopularsFound += 1
+                    if numPopularsFound >= 3:
+                        cutoffPointRight = y
+                        break
+            if cutoffPointRight is not None:
+                break
+        if cutoffPointRight is None:
+            print('Failed to detect cutoff point right. Exiting')
+            cv2.imwrite('error_cutoff_right.png', img)
+            exit()
+
+    cutoffPointLeft = None
+    numPopularsFound = 0
+    for y in range(2*y_dim):
+        for x in range(x_dim-2, x_dim+3):
+            if lotsOfNeighbors(img, x, y):
+                numPopularsFound += 1
+                if numPopularsFound >= 3:
+                    cutoffPointLeft = y
+                    break
+        if cutoffPointLeft is not None:
+            break
+    if cutoffPointLeft == None:
+        numPopularsFound = 0
+        for y in range(2*y_dim):
+            for x in range(x_dim-6, x_dim+7):
+                if someNeighbors(img, x, y):
+                    numPopularsFound += 1
+                    if numPopularsFound >= 3:
+                        cutoffPointLeft = y
+                        break
+            if cutoffPointLeft is not None:
+                break
+        if cutoffPointLeft == None:
+            print('Failed to detect cutoff point left. Exiting')
+            cv2.imwrite('error_cutoff_left.png', img)
+            exit()
+
+    img = img[cutoffPointTop:cutoffPointBot,
+              cutoffPointLeft:cutoffPointRight, :]
+
+    x_dim = img.shape[0]
+    y_dim = img.shape[1]
+
+    top_count = 0
+    for row in range(x_dim*1//3):
+        for col in range(y_dim*1//3, y_dim*2//3):
+            if isWhiteXY(img, row, col):
+                top_count += 1
+    right_count = 0
+    for row in range(x_dim*1//3, x_dim*2//3):
+        for col in range(y_dim*2//3, y_dim):
+            if isWhiteXY(img, row, col):
+                right_count += 1
+    bot_count = 0
+    for row in range(x_dim*2//3, x_dim):
+        for col in range(y_dim*1//3, y_dim*2//3):
+            if isWhiteXY(img, row, col):
+                bot_count += 1
+    left_count = 0
+    for row in range(x_dim*1//3, x_dim*2//3):
+        for col in range(y_dim*1//3):
+            if isWhiteXY(img, row, col):
+                left_count += 1
+
+    max_count = max([top_count, right_count, bot_count, left_count])
+    if top_count == max_count:
+        return 'up'
+    elif right_count == max_count:
+        return 'right'
+    elif bot_count == max_count:
+        return 'down'
+    elif left_count == max_count:
+        return 'left'
+    else:
+        return None
+
+
+def detect_arrows(img):
+    arrows = extract_arrows(img)
+    keys = []
+    for arrow in arrows:
+        keys += [detect_arrow(arrow)]
+    return keys
 
 
 def extract_text(img):
@@ -86,11 +326,10 @@ def extract_codes(text):
 
 
 def main():
-    img = cv2.imread('data/test2.png')
-    text = extract_text(img)
-    print(text)
-    codes = extract_codes(text)
-    print(codes)
+    img = cv2.imread('data/arrow7.png')
+    cv2.imshow('screen', img)
+    cv2.waitKey(0)
+    print(detect_arrows(img))
     exit()
 
 

@@ -8,9 +8,10 @@ import pytesseract
 import numpy as np
 from time import sleep
 from bader import execute_events, read_events
-from text import extract_codes, extract_text
+from text import extract_codes, extract_text, detect_arrows
 from event import Event
 import tkinter as tk
+from statistics import mode
 
 MAP_TOP_LEFT = (5, 28)
 MAP_BOTTOM_RIGHT = (184, 190)
@@ -20,6 +21,7 @@ PLATFORM_Y_RANGE = (123, 125)
 
 EMPTY_INV_IMG = cv2.imread('data/empty_inv.png')
 NOTICE_IMG = cv2.imread('data/notice.png')
+ARR_IMG = cv2.imread('data/arr.png')
 
 
 def click(d2Box, x, y):
@@ -71,6 +73,31 @@ def captureBubble(d2Box):
     ss_img = np.array(ss.grab(
         {'top': d2Box['top'] + 850, 'left': d2Box['left'] + 1320, 'width': 300, 'height': 180}))
     return np.delete(ss_img, 3, axis=2)
+
+
+def captureRune(d2Box):
+    ss = mss()
+    ss_img = np.array(ss.grab(
+        {'top': d2Box['top'] + 100, 'left': d2Box['left'] + 620, 'width': 700, 'height': 200}))
+    return np.delete(ss_img, 3, axis=2)
+
+
+def getPinkCode(d2Box):
+    detecteds = []
+    for _ in range(7):
+        rune_img = captureRune(d2Box)
+        maybe_loc = findImagePos(rune_img, ARR_IMG)
+        if len(maybe_loc) == 2 and len(maybe_loc[0] > 0):
+            loc = (maybe_loc[0][0], maybe_loc[1][0])
+            rune_img = rune_img[loc[0]+40:, loc[1]:loc[1]+400, :]
+            detecteds += [detect_arrows(rune_img)]
+        else:
+            detecteds += [['none', 'none', 'none', 'none']]
+    modes = []
+    for i in range(4):
+        modes += [mode([detecteds[j][i]
+                        for j in range(7) if detecteds[j][i] != 'none'])]
+    return modes
 
 
 def isInvEmpty(d2Box):
@@ -264,6 +291,9 @@ def moveToPink(d2Box):
             jumpDown()
         elif y > pinkPos[1]:
             jumpUpHigh()
+            sleep(0.5)
+        else:
+            break
 
     yellowPos = getYellowPos(d2Box)
     x, y = yellowPos
@@ -321,6 +351,8 @@ dd
 def main():
     sleep(1)
     box = getD2Window()
+    print(getPinkCode(box))
+    exit()
     moveToPink(box)
     exit()
 
