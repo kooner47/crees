@@ -1,3 +1,5 @@
+press,DIK_F8,0.298159
+release,DIK_F8,0.258843
 press,DIK_F9,0.298159
 release,DIK_F9,0.258843
 press,DIK_F10,0.215691

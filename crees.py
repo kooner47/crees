@@ -50,6 +50,8 @@ def captureAndSaveWindow(d2Box, filename):
 
     home_events = read_events('data/home.txt')
     execute_events(home_events)
+    playsound('data/home.wav')
+    exit()
 
 
 def captureMap(d2Box):
@@ -162,7 +164,6 @@ def getYellowPos(d2Box):
 
     print('Cannot find self on map. Exiting')
     captureAndSaveWindow(d2Box, 'error_map.png')
-    exit()
 
 
 def getPinkPos(d2Box):
@@ -235,21 +236,18 @@ def centerSelf(d2Box):
     if x < PLATFORM_X_RANGE[0] or x > PLATFORM_X_RANGE[1]:
         print('Could not center self on platform. Exiting.')
         captureAndSaveWindow(d2Box, 'error_platform.png')
-        exit()
 
     if y < PLATFORM_Y_RANGE[0]:
         print('Ended up too high. Exiting.')
         captureAndSaveWindow(d2Box, 'error_high.png')
-        exit()
     elif y > PLATFORM_Y_RANGE[1]:
         jumpUpLow()
-        sleep(0.5)
+        sleep(1)
         yellowPos = getYellowPos(d2Box)
         x, y = yellowPos
         if y < PLATFORM_Y_RANGE[0] or y > PLATFORM_Y_RANGE[1]:
             print('Could not jump up. Exiting.')
             captureAndSaveWindow(d2Box, 'error_jump.png')
-            exit()
 
 
 def moveToPink(d2Box):
@@ -269,7 +267,6 @@ def moveToPink(d2Box):
     if abs(pinkPos[0] - x) > 5:
         print('Could not match pink\'s x position. Exiting.')
         captureAndSaveWindow(d2Box, 'error_pink_x.png')
-        exit()
 
     for _ in range(3):
         yellowPos = getYellowPos(d2Box)
@@ -287,7 +284,6 @@ def moveToPink(d2Box):
     if abs(pinkPos[1] - y) > 5:
         print('Could not match pink\'s y position. Exiting.')
         captureAndSaveWindow(d2Box, 'error_pink_y.png')
-        exit()
     print('Moved to pink.')
     sleep(0.5)
 
@@ -329,7 +325,7 @@ def enterPinkCode(d2Box):
                         Event('release', 'DIK_SPACE', 0.2)])
         return False
     else:
-        print('Attempting keys.')
+        print('Attempting keys: %s' % code)
 
     events = []
     time_sum = 0
@@ -400,17 +396,17 @@ def main():
 
     buff_time = -240
     pot_time = -1800
-    index = -1
-    while True:
-        index += 1
-        print('Beginning of iteration %d.' % (index))
+    pink_time = -900
+    for i in range(230):
+        print('Beginning of iteration %d.' % (i+1))
+        playsound('data/bop.wav')
         box = getD2Window()
 
         isPresent = isNoticePresent(box)
         if isPresent:
             print('Found text bubble.')
             # flashScreen()
-            playsound('data/sound.wav')
+            playsound('data/notice.wav')
 
             codes = getBubbleCodes(box)
             click(box, 960, 720)
@@ -420,9 +416,11 @@ def main():
                 print('Executing code "%s".' % (code))
                 writeCode(code_events, code)
 
+        # TODO: fix the pink retry behavior
         pinkPos = getPinkPos(box)
         if pinkPos is not None:
             print('Found pink.')
+            playsound('data/pink.wav')
             for _ in range(3):
                 enterPinkCode(box)
             print('Centering self.')
@@ -437,15 +435,20 @@ def main():
                 if pinkPos is not None:
                     print('Found pink a third time. Exiting.')
                     captureAndSaveWindow(box, 'error_pink_third.png')
-                    exit()
+            playsound('data/pink_done.wav')
+            pink_time = curr_time(startTime)
+
+        if curr_time(startTime) - pink_time > 1000:
+            print('Went too long without a pink. Exiting.')
+            captureAndSaveWindow(box, 'error_pink_time.png')
 
         if not isInvEmpty(box):
             print('Inventory not empty. Executing sell command.')
             execute_events(sell_events)
+            sleep(1)
             if not isInvEmpty(box):
                 print('Inventory still not empty. Exiting.')
                 captureAndSaveWindow(box, 'error_inventory.png')
-                exit()
 
         if curr_time(startTime) - buff_time > 240:
             print('Executing buffs.')
