@@ -109,9 +109,8 @@ def detect_arrow(img):
             if cutoffPointTop is not None:
                 break
         if cutoffPointTop is None:
-            print('Failed to detect cutoff point top. Exiting')
-            cv2.imwrite('error_cutoff_top.png', img)
-            exit()
+            print('Failed to detect cutoff point top. Returning None')
+            return None
 
     cutoffPointBot = None
     numPopularsFound = 0
@@ -136,9 +135,8 @@ def detect_arrow(img):
             if cutoffPointBot is not None:
                 break
         if cutoffPointBot is None:
-            print('Failed to detect cutoff point bot. Exiting')
-            cv2.imwrite('error_cutoff_bot.png', img)
-            exit()
+            print('Failed to detect cutoff point bot. Returning None')
+            return None
 
     cutoffPointRight = None
     numPopularsFound = 0
@@ -163,9 +161,8 @@ def detect_arrow(img):
             if cutoffPointRight is not None:
                 break
         if cutoffPointRight is None:
-            print('Failed to detect cutoff point right. Exiting')
-            cv2.imwrite('error_cutoff_right.png', img)
-            exit()
+            print('Failed to detect cutoff point right. Returning None')
+            return None
 
     cutoffPointLeft = None
     numPopularsFound = 0
@@ -190,9 +187,8 @@ def detect_arrow(img):
             if cutoffPointLeft is not None:
                 break
         if cutoffPointLeft == None:
-            print('Failed to detect cutoff point left. Exiting')
-            cv2.imwrite('error_cutoff_left.png', img)
-            exit()
+            print('Failed to detect cutoff point left. Returning None')
+            return None
 
     img = img[cutoffPointTop:cutoffPointBot,
               cutoffPointLeft:cutoffPointRight, :]
@@ -238,7 +234,10 @@ def detect_arrows(img):
     arrows = extract_arrows(img)
     keys = []
     for arrow in arrows:
-        keys += [detect_arrow(arrow)]
+        key = detect_arrow(arrow)
+        if key is None:
+            return None
+        keys += [key]
     return keys
 
 

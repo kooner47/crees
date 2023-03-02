@@ -87,42 +87,6 @@ def captureRune(d2Box):
     return np.delete(ss_img, 3, axis=2)
 
 
-def getPinkCode(d2Box):
-    detecteds = []
-    for _ in range(5):
-        rune_img = captureRune(d2Box)
-        maybe_loc = findImagePos(rune_img, ARR_IMG)
-        if len(maybe_loc) == 2 and len(maybe_loc[0] > 0):
-            loc = (maybe_loc[0][0], maybe_loc[1][0])
-            rune_img = rune_img[loc[0]+40:, loc[1]:loc[1]+400, :]
-            detecteds += [detect_arrows(rune_img)]
-        else:
-            detecteds += [['none', 'none', 'none', 'none']]
-    modes = []
-    for i in range(4):
-        modes += [mode([detecteds[j][i]
-                        for j in range(5) if detecteds[j][i] != 'none'])]
-    return modes
-
-
-def enterPinkCode(d2Box):
-    moveToPink(d2Box)
-    execute_events([Event('press', 'DIK_SPACE', 0.2),
-                    Event('release', 'DIK_SPACE', 0.2)])
-    sleep(0.5)
-    code = getPinkCode(d2Box)
-    if 'none' in code:
-        return False
-
-    events = []
-    time_sum = 0
-    for key in code:
-        time_sum += 0.2
-        events += [Event('press', 'DIK_%s' % key, time_sum)]
-        time_sum += 0.2
-        events += [Event('release', 'DIK_%s' % key, time_sum)]
-
-
 def isInvEmpty(d2Box):
     inv_img = captureInv(d2Box)
     loc = findImagePos(inv_img, EMPTY_INV_IMG)
@@ -328,6 +292,56 @@ def moveToPink(d2Box):
     sleep(0.5)
 
 
+def getPinkCode(d2Box):
+    detecteds = []
+    for _ in range(5):
+        rune_img = captureRune(d2Box)
+        maybe_loc = findImagePos(rune_img, ARR_IMG)
+        if len(maybe_loc) == 2 and len(maybe_loc[0] > 0):
+            loc = (maybe_loc[0][0], maybe_loc[1][0])
+            rune_img = rune_img[loc[0]+40:, loc[1]:loc[1]+400, :]
+            arrows = detect_arrows(rune_img)
+            if arrows is None:
+                continue
+            else:
+                detecteds += [arrows]
+        else:
+            detecteds += [['none', 'none', 'none', 'none']]
+    modes = []
+    for i in range(4):
+        try:
+            modes += [mode([detecteds[j][i]
+                            for j in range(5) if detecteds[j][i] != 'none'])]
+        except:
+            return ['none']
+    return modes
+
+
+def enterPinkCode(d2Box):
+    moveToPink(d2Box)
+    execute_events([Event('press', 'DIK_SPACE', 0.2),
+                    Event('release', 'DIK_SPACE', 0.2)])
+    sleep(0.5)
+    code = getPinkCode(d2Box)
+    if 'none' in code:
+        print('Found none in keys. Ignoring.')
+        execute_events([Event('press', 'DIK_SPACE', 0.2),
+                        Event('release', 'DIK_SPACE', 0.2)])
+        return False
+    else:
+        print('Attempting keys.')
+
+    events = []
+    time_sum = 0
+    for key in code:
+        time_sum += 0.2
+        events += [Event('press', 'DIK_%s' % key.upper(), time_sum)]
+        time_sum += 0.2
+        events += [Event('release', 'DIK_%s' % key.upper(), time_sum)]
+    execute_events(events)
+    sleep(1)
+
+
 def writeCode(code_events, code):
     sum_time = 3.15
     for char in code:
@@ -409,13 +423,15 @@ def main():
         pinkPos = getPinkPos(box)
         if pinkPos is not None:
             print('Found pink.')
-            enterPinkCode(box)
+            for _ in range(3):
+                enterPinkCode(box)
             print('Centering self.')
             centerSelf(box)
             pinkPos = getPinkPos(box)
             if pinkPos is not None:
                 print('Found pink again.')
-                enterPinkCode(box)
+                for _ in range(3):
+                    enterPinkCode(box)
                 centerSelf(box)
                 pinkPos = getPinkPos(box)
                 if pinkPos is not None:
