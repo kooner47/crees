@@ -12,6 +12,7 @@ from text import extract_codes, extract_text, detect_arrows
 from event import Event
 import tkinter as tk
 from statistics import mode
+import time
 
 MAP_TOP_LEFT = (5, 28)
 MAP_BOTTOM_RIGHT = (184, 190)
@@ -22,6 +23,10 @@ PLATFORM_Y_RANGE = (123, 125)
 EMPTY_INV_IMG = cv2.imread('data/empty_inv.png')
 NOTICE_IMG = cv2.imread('data/notice.png')
 ARR_IMG = cv2.imread('data/arr.png')
+
+
+def curr_time(startTime):
+    return time.time() - startTime
 
 
 def click(d2Box, x, y):
@@ -84,7 +89,7 @@ def captureRune(d2Box):
 
 def getPinkCode(d2Box):
     detecteds = []
-    for _ in range(7):
+    for _ in range(5):
         rune_img = captureRune(d2Box)
         maybe_loc = findImagePos(rune_img, ARR_IMG)
         if len(maybe_loc) == 2 and len(maybe_loc[0] > 0):
@@ -96,8 +101,26 @@ def getPinkCode(d2Box):
     modes = []
     for i in range(4):
         modes += [mode([detecteds[j][i]
-                        for j in range(7) if detecteds[j][i] != 'none'])]
+                        for j in range(5) if detecteds[j][i] != 'none'])]
     return modes
+
+
+def enterPinkCode(d2Box):
+    moveToPink(d2Box)
+    execute_events([Event('press', 'DIK_SPACE', 0.2),
+                    Event('release', 'DIK_SPACE', 0.2)])
+    sleep(0.5)
+    code = getPinkCode(d2Box)
+    if 'none' in code:
+        return False
+
+    events = []
+    time_sum = 0
+    for key in code:
+        time_sum += 0.2
+        events += [Event('press', 'DIK_%s' % key, time_sum)]
+        time_sum += 0.2
+        events += [Event('release', 'DIK_%s' % key, time_sum)]
 
 
 def isInvEmpty(d2Box):
@@ -301,8 +324,8 @@ def moveToPink(d2Box):
         print('Could not match pink\'s y position. Exiting.')
         captureAndSaveWindow(d2Box, 'error_pink_y.png')
         exit()
-
-    exit()
+    print('Moved to pink.')
+    sleep(0.5)
 
 
 def writeCode(code_events, code):
@@ -349,75 +372,76 @@ dd
 
 
 def main():
-    sleep(1)
-    box = getD2Window()
-    print(getPinkCode(box))
-    exit()
-    moveToPink(box)
-    exit()
-
     buff_events = read_events('data/buff.txt')
+    pot_events = read_events('data/pot.txt')
     mob_events = read_events('data/mob.txt')
     sell_events = read_events('data/sell.txt')
     code_events = read_events('data/code.txt')
-    home_events = read_events('data/home.txt')
 
     print('Waiting for 2 seconds.')
     sleep(2)
     print('Starting.')
 
-    for _i in range(4):
-        print('Outer iteration %d.' % (_i))
+    startTime = time.time()
+
+    buff_time = -240
+    pot_time = -1800
+    index = -1
+    while True:
+        index += 1
+        print('Beginning of iteration %d.' % (index))
         box = getD2Window()
 
-        print('Executing buffs.')
-        execute_events(buff_events)
-        for _j in range(12):
-            print('Inner iteration %d.' % (_j))
-            isPresent = isNoticePresent(box)
-            if isPresent:
-                print('Found text bubble.')
-                # flashScreen()
-                playsound('data/sound.wav')
+        isPresent = isNoticePresent(box)
+        if isPresent:
+            print('Found text bubble.')
+            # flashScreen()
+            playsound('data/sound.wav')
 
-                codes = getBubbleCodes(box)
-                click(box, 960, 720)
-                execute_events([Event('press', 'DIK_ENTER', 0.5),
-                                Event('release', 'DIK_ENTER', 0.5)])
-                for code in codes:
-                    print('Executing code "%s".' % (code))
-                    writeCode(code_events, code)
+            codes = getBubbleCodes(box)
+            click(box, 960, 720)
+            execute_events([Event('press', 'DIK_ENTER', 0.5),
+                            Event('release', 'DIK_ENTER', 0.5)])
+            for code in codes:
+                print('Executing code "%s".' % (code))
+                writeCode(code_events, code)
 
-                    # TODO: find another way to determine test is passed and stop attempting more codes
-                    '''
-                    notice_img = captureMiddle(box)
-                    text = extract_text(notice_img)
-                    if '@bot' not in text:
-                        print('Text bubble no longer found. Continuing.')
-                        break
-                    '''
-
-                # TODO: verify notice is dismissed by initial enter press, find other way to determine test is passed
-                '''
-                notice_img = captureMiddle(box)
-                text = extract_text(notice_img)
-                if '@bot' in text:
-                    print('Text bubble still visible. Exiting.')
-                    captureAndSaveWindow(box, 'error_text_bubble.png')
+        pinkPos = getPinkPos(box)
+        if pinkPos is not None:
+            print('Found pink.')
+            enterPinkCode(box)
+            print('Centering self.')
+            centerSelf(box)
+            pinkPos = getPinkPos(box)
+            if pinkPos is not None:
+                print('Found pink again.')
+                enterPinkCode(box)
+                centerSelf(box)
+                pinkPos = getPinkPos(box)
+                if pinkPos is not None:
+                    print('Found pink a third time. Exiting.')
+                    captureAndSaveWindow(box, 'error_pink_third.png')
                     exit()
-                '''
 
+        if not isInvEmpty(box):
+            print('Inventory not empty. Executing sell command.')
+            execute_events(sell_events)
             if not isInvEmpty(box):
-                print('Inventory not empty. Executing sell command.')
-                execute_events(sell_events)
-                if not isInvEmpty(box):
-                    print('Inventory still not empty. Exiting.')
-                    captureAndSaveWindow(box, 'error_inventory.png')
-                    exit()
+                print('Inventory still not empty. Exiting.')
+                captureAndSaveWindow(box, 'error_inventory.png')
+                exit()
 
-            print('Executing mobbing.')
-            # TODO: add click on screen here, increase movement within mob.txt to test whether empty attacking still occurs
-            execute_events(mob_events)
+        if curr_time(startTime) - buff_time > 240:
+            print('Executing buffs.')
+            execute_events(buff_events)
+            buff_time = curr_time(startTime)
+        if curr_time(startTime) - pot_time > 1800:
+            print('Executing pots.')
+            execute_events(pot_events)
+            pot_time = curr_time(startTime)
+
+        print('Executing mobbing.')
+        execute_events(mob_events)
 
 
 if __name__ == '__main__':
