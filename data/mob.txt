@@ -1,4 +1,5 @@
-release,DIK_ENTER,0.080292
+press,DIK_RIGHT,0.107667
+release,DIK_RIGHT,0.124442
 press,DIK_Q,0.748078
 release,DIK_Q,0.098766
 press,DIK_D,1.061692

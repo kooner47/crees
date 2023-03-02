@@ -1,3 +1,4 @@
+import sys
 from playsound import playsound
 import win32gui
 import win32api
@@ -397,6 +398,10 @@ def main():
     buff_time = -240
     pot_time = -1800
     pink_time = -900
+
+    if len(sys.argv) > 1:
+        pot_time = 0
+        pink_time = 0
     for i in range(230):
         print('Beginning of iteration %d.' % (i+1))
         playsound('data/bop.wav')
@@ -459,6 +464,8 @@ def main():
             execute_events(pot_events)
             pot_time = curr_time(startTime)
 
+        print('Centering self.')
+        centerSelf(box)
         print('Executing mobbing.')
         execute_events(mob_events)
 
