@@ -291,7 +291,7 @@ def moveToPink(d2Box):
 
 def getPinkCode(d2Box):
     detecteds = []
-    for _ in range(5):
+    for _ in range(7):
         rune_img = captureRune(d2Box)
         maybe_loc = findImagePos(rune_img, ARR_IMG)
         if len(maybe_loc) == 2 and len(maybe_loc[0] > 0):
@@ -303,7 +303,7 @@ def getPinkCode(d2Box):
             else:
                 detecteds += [arrows]
         else:
-            detecteds += [['none', 'none', 'none', 'none']]
+            return True
     modes = []
     for i in range(4):
         try:
@@ -320,10 +320,13 @@ def enterPinkCode(d2Box):
                     Event('release', 'DIK_SPACE', 0.2)])
     sleep(0.5)
     code = getPinkCode(d2Box)
-    if 'none' in code:
+    if code == True:
+        return True
+    elif 'none' in code:
         print('Found none in keys. Ignoring.')
         execute_events([Event('press', 'DIK_SPACE', 0.2),
                         Event('release', 'DIK_SPACE', 0.2)])
+        sleep(0.5)
         return False
     else:
         print('Attempting keys: %s' % code)
@@ -400,8 +403,9 @@ def main():
     pink_time = -900
 
     if len(sys.argv) > 1:
-        pot_time = 0
-        pink_time = 0
+        pink_time = float(sys.argv[1]) * 60 - 900
+        if len(sys.argv) > 2:
+            pot_time = float(sys.argv[2]) * 60 - 1800
     for i in range(230):
         print('Beginning of iteration %d.' % (i+1))
         playsound('data/bop.wav')
@@ -421,31 +425,27 @@ def main():
                 print('Executing code "%s".' % (code))
                 writeCode(code_events, code)
 
-        # TODO: fix the pink retry behavior
-        pinkPos = getPinkPos(box)
-        if pinkPos is not None:
-            print('Found pink.')
-            playsound('data/pink.wav')
-            for _ in range(3):
-                enterPinkCode(box)
-            print('Centering self.')
-            centerSelf(box)
+        if curr_time(startTime) - pink_time > 900:
             pinkPos = getPinkPos(box)
             if pinkPos is not None:
-                print('Found pink again.')
-                for _ in range(3):
-                    enterPinkCode(box)
+                print('Found pink.')
+                playsound('data/pink.wav')
+                for _ in range(20):
+                    exit = enterPinkCode(box)
+                    sleep(0.4)
+                    if exit:
+                        break
+                print('Centering self.')
                 centerSelf(box)
                 pinkPos = getPinkPos(box)
                 if pinkPos is not None:
-                    print('Found pink a third time. Exiting.')
+                    print('Found pink again. Exiting.')
                     captureAndSaveWindow(box, 'error_pink_third.png')
-            playsound('data/pink_done.wav')
-            pink_time = curr_time(startTime)
-
-        if curr_time(startTime) - pink_time > 1000:
-            print('Went too long without a pink. Exiting.')
-            captureAndSaveWindow(box, 'error_pink_time.png')
+                playsound('data/pink_done.wav')
+                pink_time = curr_time(startTime)
+            else:
+                print('Went too long without a pink. Exiting.')
+                captureAndSaveWindow(box, 'error_pink_time.png')
 
         if not isInvEmpty(box):
             print('Inventory not empty. Executing sell command.')

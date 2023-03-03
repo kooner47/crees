@@ -1,8 +1,8 @@
 press,DIK_F11,1.098159
-release,DIK_F11,0.058843
+release,DIK_F11,0.158843
 press,DIK_F11,0.111702
-release,DIK_F11,0.049866
+release,DIK_F11,0.149866
 press,DIK_F12,0.115691
-release,DIK_F12,0.060837
+release,DIK_F12,0.160837
 press,DIK_F12,0.110704
-release,DIK_F12,0.055851
+release,DIK_F12,0.155851
