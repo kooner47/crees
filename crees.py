@@ -291,7 +291,7 @@ def moveToPink(d2Box):
 
 def getPinkCode(d2Box):
     detecteds = []
-    for _ in range(7):
+    for _ in range(5):
         rune_img = captureRune(d2Box)
         maybe_loc = findImagePos(rune_img, ARR_IMG)
         if len(maybe_loc) == 2 and len(maybe_loc[0] > 0):
@@ -429,12 +429,15 @@ def main():
             pinkPos = getPinkPos(box)
             if pinkPos is not None:
                 print('Found pink.')
+                exit_count = 0
                 playsound('data/pink.wav')
                 for _ in range(20):
                     exit = enterPinkCode(box)
                     sleep(0.4)
                     if exit:
-                        break
+                        exit_count += 1
+                        if exit_count > 5:
+                            break
                 print('Centering self.')
                 centerSelf(box)
                 pinkPos = getPinkPos(box)
