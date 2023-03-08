@@ -342,7 +342,9 @@ def enterPinkCode(d2Box):
     sleep(1)
 
 
-def writeCode(code_events, code):
+def writeCode(og_events, code):
+    code_events = []
+    code_events.extend(og_events)
     sum_time = 3.15
     for char in code:
         if char.isupper():
@@ -418,7 +420,7 @@ def main():
             playsound('data/notice.wav')
 
             codes = getBubbleCodes(box)
-            click(box, 960, 720)
+            click(box, 960, 650)
             execute_events([Event('press', 'DIK_ENTER', 0.5),
                             Event('release', 'DIK_ENTER', 0.5)])
             for code in codes:
@@ -432,9 +434,9 @@ def main():
                 exit_count = 0
                 playsound('data/pink.wav')
                 for _ in range(20):
-                    exit = enterPinkCode(box)
+                    exit_count = enterPinkCode(box)
                     sleep(0.4)
-                    if exit:
+                    if exit_count:
                         exit_count += 1
                         if exit_count > 5:
                             break
